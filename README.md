@@ -46,12 +46,18 @@ An electromechanical gripper arm prototype designed to assist individuals with l
 - **Precision:** ±2mm positioning accuracy
 - **Safety Limits:** Configurable force thresholds
 
+### Circuit Diagram
+
+![Circuit Diagram](docs/RobotHandCircuit.png)
+
+The circuit diagram shows the complete electrical connections between the Arduino Uno, sensors, motors, and power supply.
+
 ## Quick Start
 
 ### Prerequisites
 - **PlatformIO IDE** (or PlatformIO Core CLI)
 - **USB Cable** (Type A to Type B)
-- **12V Power Supply** (included specifications)
+- **12V Power Supply**
 
 ### Installation
 
@@ -113,10 +119,9 @@ An electromechanical gripper arm prototype designed to assist individuals with l
 
 ## Documentation
 
-- 📖 **[User Manual](docs/user-manual.pdf)** — Complete operating instructions
-- 🔧 **[Assembly Guide](docs/assembly-guide.pdf)** — Detailed construction steps  
-- ⚡ **[Circuit Diagrams](docs/schematics/)** — Electrical connection diagrams
-- 🧪 **[Test Results](docs/testing-report.pdf)** — Performance evaluation data
+- ⚡ **[Circuit Diagram](docs/RobotHandCircuit.png)** — Electrical connection schematic
+- 📊 **[PID Data](data/PID_data.csv)** — PID control system test data
+- 📈 **[Current Filter Data](data/current_filter_data.csv)** — Signal filtering analysis data
 
 ## Project Information
 
