@@ -1,0 +1,51 @@
+# PlatformIO
+.pio/
+.pioenvs/
+.piolibdeps/
+
+# Arduino build artifacts
+*.elf
+*.bin
+*.hex
+*.eep
+*.lss
+*.sym
+*.map
+
+# Build directories
+build/
+*.build/
+
+# VSCode
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/extensions.json
+*.code-workspace
+
+# macOS
+.DS_Store
+._*
+
+# Windows
+Thumbs.db
+Desktop.ini
+
+# Linux
+*~
+
+# Backup and temporary files
+*.bak
+*.tmp
+*.swp
+*.log
+*.old
+*.ino.bak
+
+# Debug files
+*.stackdump
+core
+
+# Python (if using build scripts)
+__pycache__/
+*.pyc
