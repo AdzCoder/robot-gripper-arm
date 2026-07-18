@@ -148,7 +148,13 @@ float readUltrasonicDistance(int trigPin, int echoPin)
   delayMicroseconds(10);
   digitalWrite(trigPin, LOW);
 
-  long duration = pulseIn(echoPin, HIGH);
+  // Timeout caps the blocking wait: the HC-SR04's ~4 m ceiling is a ~23 ms
+  // round trip, so 25 ms bounds the loop instead of pulseIn's 1 s default.
+  long duration = pulseIn(echoPin, HIGH, 25000UL);
+  if (duration == 0)
+  {
+    return 0.0; // No echo within range; treated as "no reading" by the caller.
+  }
   return (duration * 0.034) / 2.0;
 }
 

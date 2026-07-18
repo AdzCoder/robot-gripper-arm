@@ -166,4 +166,4 @@ MIT Licence — see the [LICENCE](LICENSE) file for details.
 
 ---
 
-*This project was developed as part of academic coursework at the University of Warwick. For technical questions or educational collaboration, please contact through appropriate academic channels.*
+*Developed by Adil Wahab Bhatti as part of academic coursework at the University of Warwick.*
