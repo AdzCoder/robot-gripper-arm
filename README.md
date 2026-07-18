@@ -1,168 +1,77 @@
-# Robot Gripper Arm Project
+# Robot Gripper Arm
+
 [![Arduino](https://img.shields.io/badge/Arduino-Uno-blue?style=flat-square)](https://www.arduino.cc/en/hardware/uno)
+[![PlatformIO](https://img.shields.io/badge/PlatformIO-CI-orange?style=flat-square)](https://platformio.org/)
 [![Licence](https://img.shields.io/badge/Licence-MIT-orange?style=flat-square)](LICENSE)
 [![University](https://img.shields.io/badge/University-Warwick-green?style=flat-square)](https://warwick.ac.uk/)
 [![Status](https://img.shields.io/badge/Status-Educational-lightgrey?style=flat-square)](https://github.com/topics/education)
-[![Domain](https://img.shields.io/badge/Domain-Robotics-red?style=flat-square)](https://en.wikipedia.org/wiki/Robotics)
 
-## Overview
+Arduino firmware for an assistive gripper arm that grips objects automatically using sensor feedback, with joystick control and a PID-regulated grip force. Built for a second-year group design project at Warwick; this repository holds the control code, refactored from the original coursework sketch into a structured PlatformIO project.
 
-An electromechanical gripper arm prototype designed to assist individuals with limited mobility in performing daily tasks. The device features autonomous and adaptive gripping capabilities using force and distance feedback, with an intuitive joystick interface and built-in safety mechanisms.
+## Background
 
-### Key Applications
-- Assistive technology for individuals with mobility impairments
-- Educational robotics and mechatronics demonstrations
-- Research platform for adaptive gripping algorithms
+This was the electronics and software half of the ES2C6 Electromechanical System Design project (2023/24), a six-person brief to design, build, and test an assistive device. The target was an intuitive gripper to help people with limited mobility handle everyday objects: anything from 10 g to 500 g and from 15×10×10 mm to 60×80×150 mm, gripping on demand and releasing fully when switched off. The gripper reads distance, force, and motor current to decide when and how hard to close, so the user drives it with a single joystick rather than managing grip strength by hand. The mechanical design, enclosure, and full process report were the wider group deliverable; what lives here is the firmware that runs the device.
 
-## Features
+## How it works
 
-- 🤖 **Autonomous Grip Control** — Intelligent gripping using force and distance sensor feedback
-- 🎯 **Ergonomic Design** — Bike-handle grip design optimised for accessibility
-- ⚙️ **PID Control System** — Consistent grip strength regulation for delicate objects
-- 🕹️ **Intuitive Interface** — Joystick control for precise positioning and operation
-- 🛡️ **Safety Mechanisms** — Emergency release and force limiting protection
-- 📊 **Real-time Feedback** — Continuous monitoring of grip force and object detection
+The controller runs a fixed loop: read sensors, decide gripper state, drive the motors. When the ultrasonic sensor detects an object within range and the joystick is not pulled back, the gripper closes; a PID loop then holds the motor current (a proxy for grip force) at a setpoint so delicate objects are not crushed. With no object present it loosens on a timed release and returns the servo to its neutral angle. The joystick button toggles the whole system on and off.
 
-## Technical Specifications
+## Hardware
 
-### Hardware Components
-- **Microcontroller:** Arduino Uno R3
-- **Power Supply:** 12V, 1A (12W) plug-in adapter
-- **Weight Capacity:** 10g – 500g
-- **Object Dimensions:** 15×10×10mm – 60×80×150mm
-
-### Sensors & Actuators
 | Component | Model | Purpose |
-|-----------|--------|---------|
-| **Current Sensor** | INA219 | Motor current monitoring and force feedback |
-| **Distance Sensor** | HC-SR04 Ultrasonic | Object detection and positioning |
-| **Force Sensor** | Force Sensing Resistor (FSR) | Direct grip pressure measurement |
-| **Drive Motor** | DC Geared Motor | Primary gripping mechanism |
-| **Positioning Motor** | Servo Motor | Gripper rotation and alignment |
+|-----------|-------|---------|
+| Microcontroller | Arduino Uno R3 | Main controller |
+| Current sensor | INA219 | Motor current, used as grip-force feedback |
+| Distance sensor | HC-SR04 ultrasonic | Object detection |
+| Force sensor | Force-sensing resistor (FSR) | Direct grip-pressure reading |
+| Drive motor | DC geared motor | Gripping mechanism |
+| Positioning motor | Servo | Gripper rotation |
+| Input | KY-023 joystick module | User control |
 
-### Control System
-- **Algorithm:** PID feedback control
-- **Response Time:** <100ms sensor-to-actuator
-- **Precision:** ±2mm positioning accuracy
-- **Safety Limits:** Configurable force thresholds
+- **Power:** 12 V, 1 A (12 W) plug-in adapter
+- **Rated payload:** 10–500 g
+- **Object envelope:** 15×10×10 mm to 60×80×150 mm
 
-### Circuit Diagram
+![Circuit diagram](docs/RobotHandCircuit.png)
 
-![Circuit Diagram](docs/RobotHandCircuit.png)
+## Build and upload
 
-The circuit diagram shows the complete electrical connections between the Arduino Uno, sensors, motors, and power supply.
+Requires [PlatformIO](https://platformio.org/). Dependencies are declared in `platformio.ini` and fetched automatically.
 
-## Quick Start
+```bash
+git clone https://github.com/AdzCoder/robot-gripper-arm.git
+cd robot-gripper-arm
+pio run                    # build
+pio run --target upload    # flash to the Uno
+pio device monitor         # optional serial output
+```
 
-### Prerequisites
-- **PlatformIO IDE** (or PlatformIO Core CLI)
-- **USB Cable** (Type A to Type B)
-- **12V Power Supply**
+| Library | Version | Licence | Purpose |
+|---------|---------|---------|---------|
+| [Adafruit INA219](https://github.com/adafruit/Adafruit_INA219) | ^1.2.3 | MIT | Current sensing |
+| [movingAvg](https://github.com/JChristensen/movingAvg) | ^2.3.1 | GPL-3.0 | Signal smoothing |
+| [Servo](https://github.com/arduino-libraries/Servo) | ^1.2.1 | LGPL-2.1 | Servo control |
 
-### Installation
+## Operation
 
-1. **Clone the Repository**
-   ```bash
-   git clone https://github.com/AdzCoder/robot-gripper-arm.git
-   cd robot-gripper-arm
-   ```
+Power on and wait for the initialisation LED. Press the joystick button to arm the system. Use the joystick to rotate the gripper; it closes automatically when an object is detected and holds a regulated grip. Pull the joystick back to override and release. Press the button again to disarm, which stops the motors.
 
-2. **Install Required Libraries**
-   
-   This project uses PlatformIO for dependency management. Libraries are automatically installed from `platformio.ini`:
-   
-   ```ini
-   lib_deps = 
-      adafruit/Adafruit INA219@^1.2.3
-      jchristensen/movingAvg@^2.3.1
-      arduino-libraries/Servo@^1.2.1
-   ```
-   
-   | Library | Version | Licence | Purpose |
-   |---------|---------|---------|---------|
-   | [Adafruit INA219](https://github.com/adafruit/Adafruit_INA219) | ^1.2.3 | MIT | Current sensing and power monitoring |
-   | [movingAvg](https://github.com/JChristensen/movingAvg) | ^2.3.1 | GPL-3.0 | Signal filtering and noise reduction |
-   | [Servo](https://github.com/arduino-libraries/Servo) | ^1.2.1 | LGPL-2.1 | Servo motor control |
+## Repository layout
 
-3. **Build and Upload**
-   ```bash
-   # Build the project
-   pio run
-   
-   # Upload to Arduino Uno
-   pio run --target upload
-   ```
+- `src/main.cpp`: controller firmware
+- `data/`: captured PID and current-filter test logs
+- `docs/RobotHandCircuit.png`: wiring diagram
+- `platformio.ini`: board and dependency configuration
 
-### Hardware Setup
+## Academic context
 
-1. **Connect Power Supply** — Ensure 12V adapter is properly connected
-2. **Verify Connections** — Check all sensor and motor wiring per circuit diagram
-3. **Calibrate Sensors** — Run initial calibration routine (see User Manual)
+**Module:** [ES2C6 Electromechanical System Design (2023/24)](https://courses.warwick.ac.uk/modules/2023/ES2C6-15) · **Team:** Group J4, six students · **Institution:** University of Warwick, School of Engineering
 
-## Usage Guide
-
-### Basic Operation
-1. **Power On** — Switch on main power and wait for initialisation LED
-2. **Position Gripper** — Use joystick X/Y axes for precise positioning
-3. **Activate Grip** — Press joystick button to engage autonomous gripping
-4. **Release Object** — Push joystick forward for controlled release
-
-### Advanced Features
-- **Force Adjustment** — Modify grip strength via potentiometer
-- **Emergency Stop** — Pull joystick backwards for immediate release
-- **Calibration Mode** — Hold button during startup for sensor recalibration
-
-### Troubleshooting
-- **No Response:** Check power connections and Arduino USB link
-- **Weak Grip:** Verify motor current readings and force sensor calibration
-- **Positioning Issues:** Recalibrate distance sensor and check for obstructions
-
-## Documentation
-
-- ⚡ **[Circuit Diagram](docs/RobotHandCircuit.png)** — Electrical connection schematic
-- 📊 **[PID Data](data/PID_data.csv)** — PID control system test data
-- 📈 **[Current Filter Data](data/current_filter_data.csv)** — Signal filtering analysis data
-
-## Project Information
-
-**Development Team:** Group J4  
-**Institution:** University of Warwick, School of Engineering  
-**Module:** [ES2C6: Electromechanical System Design (2023/24)](https://courses.warwick.ac.uk/modules/2023/ES2C6-15)
-
-**Project Objectives:**
-- Design and implement an assistive robotic device
-- Integrate multiple sensor systems for autonomous operation
-- Develop safety-critical control algorithms
-- Create accessible human-machine interfaces
-
-## Future Enhancements
-
-Potential improvements identified during development:
-- **Machine Learning Integration** — Adaptive grip patterns based on object recognition
-- **Wireless Control** — Bluetooth or Wi-Fi interface for remote operation
-- **Multi-DOF Movement** — Additional servo motors for enhanced positioning
-- **Visual Feedback** — Camera integration for improved object detection
-
-## Contributing
-
-This is an educational project that has been completed. However, if you're using this code for your own research or studies:
-
-1. Fork the repository for your modifications  
-2. Document any significant changes or improvements
-3. Consider sharing results with the academic community
-4. Respect the original licensing terms
-
-## Project Status
-
-**Status:** Completed (Academic Year 2023/24)  
-**Maintenance:** No longer actively maintained  
-**Usage:** Available for educational and research purposes
-
-This project represents a successful completion of the ES2C6 coursework requirements and demonstrates practical application of mechatronic principles in assistive technology.
+The project is complete and the firmware is provided as an educational reference. Feel free to fork and adapt it.
 
 ## Licence
 
-MIT Licence — see the [LICENCE](LICENSE) file for details.
+MIT Licence: see the [LICENCE](LICENSE) file for details.
 
 ---
 
