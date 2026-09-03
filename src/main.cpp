@@ -5,15 +5,16 @@
 
 /**
  * @file main.cpp
- * @brief Sensor-controlled DC motor gripper system with PID control
+ * @brief Sensor-controlled DC motor gripper with closed-loop grip force
  * @author Adil Wahab Bhatti
- * @version 4.0
- * @date 2025-12-06
+ * @version 4.1
+ * @date 2026-09-03
  *
  * @description
- * Arduino gripper control system using multiple sensors (ultrasonic, current, force)
- * and joystick for precise motor control with PID feedback. Automatically grips
- * objects when detected and provides manual control via joystick.
+ * Arduino gripper control system. An ultrasonic sensor decides when to close and
+ * motor current is regulated to a setpoint to decide how hard, giving a grip that
+ * holds without crushing. Pad force is sampled and filtered for logging but does
+ * not feed the control loop. A joystick rotates the gripper and arms the system.
  *
  * @hardware
  * - Arduino Uno
@@ -66,12 +67,24 @@ namespace Limits
 }
 
 // PID Controller Parameters
+//
+// All three gains are tunable. KP is the live one; KI and KD are currently zero:
+//
+//   - calculatePID() accumulates its result into the output, so the KP term
+//     already supplies integral action. A KI term adds double-integral
+//     behaviour on top of it.
+//   - Current is smoothed by a 35-sample moving average and lags the true motor
+//     current. Derivative action on a heavily filtered signal amplifies that lag
+//     instead of damping the response.
+//
+// The gains carry units (PWM counts per mA of error, per iteration) and only
+// mean anything against the real motor, gearbox and pad.
 namespace PID
 {
-  const double KP = 0.02;
-  const double KI = 0.00;
-  const double KD = 0.000000;
-  const float SETPOINT = 130.0;
+  const double KP = 0.02;     // tunable
+  const double KI = 0.00;     // tunable
+  const double KD = 0.000000; // tunable
+  const float SETPOINT = 130.0; // mA
 }
 
 // Moving Average Buffer Sizes
@@ -86,11 +99,12 @@ namespace BufferSizes
 // TYPES & ENUMS
 // ============================================================================
 
+// TIGHTENING covers the whole closing-and-holding phase: the controller regulates
+// continuously while an object is present and does not latch a separate held state.
 enum class GripperMode
 {
   OFF = 0,
   TIGHTENING = 1,
-  TIGHTENED = 2,
   LOOSENING = -1,
   LOOSENED = -2
 };
@@ -119,8 +133,8 @@ struct SystemState
   double integral = 0.0;
   unsigned long currentTime = 0;
   unsigned long prevTime = 0;
-  float deltaTime = 0.0;
-  float looseningTime = 0.0;
+  float deltaTimeMs = 0.0; // milliseconds; KI and KD are scaled in these units
+  float looseningTime = 0.0; // milliseconds
 };
 
 // ============================================================================
@@ -190,17 +204,40 @@ void updateTiming()
 {
   state.prevTime = state.currentTime;
   state.currentTime = micros();
-  state.deltaTime = (state.currentTime - state.prevTime) / 1000.0;
+  state.deltaTimeMs = (state.currentTime - state.prevTime) / 1000.0;
 }
 
+/**
+ * Incremental (velocity-form) controller: the result is added to the previous
+ * output rather than written to it, which shifts the order of action of every
+ * term by one.
+ *
+ *   KP term -> integral action    (accumulating a proportional term integrates)
+ *   KI term -> double-integral action
+ *   KD term -> proportional action
+ *
+ * With KI and KD at zero the loop runs as pure integral action with gain KP,
+ * driving steady-state current error to zero and holding the grip. A true
+ * velocity-form PI would take the proportional part as KP * (error - prevError).
+ *
+ * constrain() clamps the accumulator itself, bounding integral wind-up in place
+ * rather than only limiting what reaches the motor.
+ */
 void calculatePID()
 {
   state.prevError = state.error;
   state.error = PID::SETPOINT - sensors.avgCurrent;
 
   double proportional = PID::KP * state.error;
-  state.integral += PID::KI * state.error * state.deltaTime;
-  double derivative = PID::KD * (state.error - state.prevError) / state.deltaTime;
+  state.integral += PID::KI * state.error * state.deltaTimeMs;
+
+  // KD is applied before the division, so a zero interval evaluates 0.0 / 0.0 as
+  // NaN rather than zero, and NaN survives constrain() to reach analogWrite().
+  double derivative = 0.0;
+  if (state.deltaTimeMs > 0.0)
+  {
+    derivative = PID::KD * (state.error - state.prevError) / state.deltaTimeMs;
+  }
 
   double pidValue = proportional + state.integral + derivative;
   state.pidOutput += pidValue;
@@ -250,7 +287,13 @@ void startLoosening()
 
 void controlGripper()
 {
-  bool objectInRange = (sensors.avgDistance < Limits::GRIP_DISTANCE_THRESHOLD) &&
+  // Triggers on the instantaneous reading; the 100-sample distance average adds
+  // roughly a second of lag to a grip trigger and is kept for logging only. The
+  // > 0 guard is required because readUltrasonicDistance() returns 0.0 on echo
+  // timeout, which is below the threshold and would otherwise clamp the gripper
+  // shut whenever the ultrasonic sensor drops out.
+  bool objectInRange = (sensors.distance > 0.0) &&
+                       (sensors.distance < Limits::GRIP_DISTANCE_THRESHOLD) &&
                        (abs(sensors.joystickX) < Limits::JOYSTICK_GRIP_THRESHOLD);
 
   if (objectInRange)
@@ -274,7 +317,7 @@ void controlGripper()
     }
     else
     {
-      state.looseningTime += state.deltaTime;
+      state.looseningTime += state.deltaTimeMs;
       if (state.looseningTime > Limits::LOOSENING_TIMEOUT)
       {
         state.gripperMode = GripperMode::LOOSENED;
